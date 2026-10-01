@@ -1,0 +1,76 @@
+module.exports = {
+  // أدوار المستخدمين
+  ROLES: {
+    ADMIN: 'ADMIN',
+    DISPATCHER: 'DISPATCHER',
+    RECEPTIONIST: 'RECEPTIONIST',
+    PARAMEDIC: 'PARAMEDIC',
+    FORENSIC_OFFICER: 'FORENSIC_OFFICER',
+    SUPERVISOR: 'SUPERVISOR'
+  },
+
+  // حالات البلاغات الميدانية
+  INCIDENT_STATUS: {
+    OPEN: 'OPEN',
+    IN_PROGRESS: 'IN_PROGRESS',
+    RESOLVED: 'RESOLVED',
+    CANCELLED: 'CANCELLED'
+  },
+
+  // مستويات خطورة البلاغ
+  SEVERITY_LEVELS: {
+    LOW: 'LOW',
+    NORMAL: 'NORMAL',
+    HIGH: 'HIGH',
+    CRITICAL: 'CRITICAL'
+  },
+
+  // حالات سيارات الإسعاف
+  AMBULANCE_STATUS: {
+    AVAILABLE: 'AVAILABLE',
+    DISPATCHED: 'DISPATCHED',
+    ON_SCENE: 'ON_SCENE',
+    RETURNING: 'RETURNING',
+    MAINTENANCE: 'MAINTENANCE'
+  },
+
+  // حالات المهمة الإسعافية
+  DISPATCH_STATUS: {
+    ASSIGNED: 'ASSIGNED',
+    EN_ROUTE: 'EN_ROUTE',
+    ON_SCENE: 'ON_SCENE',
+    TRANSPORTING: 'TRANSPORTING',
+    COMPLETED: 'COMPLETED'
+  },
+
+  // حالات الملفات/القضايا
+  CASE_STATUS: {
+    OPEN: 'OPEN',
+    UNDER_INVESTIGATION: 'UNDER_INVESTIGATION',
+    CLOSED: 'CLOSED',
+    ARCHIVED: 'ARCHIVED'
+  },
+
+  // حالة التعرف على الهوية
+  IDENTITY_STATUS: {
+    KNOWN: 'KNOWN',
+    UNKNOWN: 'UNKNOWN',
+    PENDING_VERIFICATION: 'PENDING_VERIFICATION'
+  },
+
+  // حالة الجثمان داخل الثلاجة
+  BODY_STATUS: {
+    IN_MORTUARY: 'IN_MORTUARY',
+    HANDED_OVER: 'HANDED_OVER',
+    RELEASED_FOR_BURIAL: 'RELEASED_FOR_BURIAL',
+    TRANSFERRED: 'TRANSFERRED'
+  },
+
+  // حالات طلبات الفحص الشرعي
+  FORENSIC_STATUS: {
+    PENDING: 'PENDING',
+    IN_PROGRESS: 'IN_PROGRESS',
+    COMPLETED: 'COMPLETED',
+    REJECTED: 'REJECTED'
+  }
+};
