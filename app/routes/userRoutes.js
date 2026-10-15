@@ -1,19 +1,48 @@
+
 const express = require('express');
 const router = express.Router();
+
 const UserController = require('../controllers/UserController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const roleMiddleware = require('../middlewares/roleMiddleware');
+const organizationMiddleware = require('../middlewares/organizationMiddleware');
+const permissionMiddleware = require('../middlewares/permissionMiddleware');
 
-// جميع مسارات المستخدمين تتطلب تسجيل الدخول
 router.use(authMiddleware);
+router.use(organizationMiddleware);
 
-// إنشاء حساب جديد (خاص بالمدير ADMIN)
-router.post('/', roleMiddleware(['ADMIN']), UserController.createUser);
+// جلب المستخدمين
+router.get(
+  '/',
+  permissionMiddleware('USER_VIEW'),
+  UserController.getAll
+);
 
-// عرض المستخدمين
-router.get('/', roleMiddleware(['ADMIN', 'SUPERVISOR']), UserController.getUsers);
+// عرض مستخدم محدد
+router.get(
+  '/:id',
+  permissionMiddleware('USER_VIEW'),
+  UserController.getById
+);
 
-// تغيير حالة التفعيل
-router.patch('/:userId/status', roleMiddleware(['ADMIN']), UserController.toggleUserStatus);
+// إنشاء مستخدم
+router.post(
+  '/',
+  permissionMiddleware('USER_MANAGE'),
+  UserController.create
+);
+
+// تحديث حالة المستخدم
+router.patch(
+  '/:id/status',
+  permissionMiddleware('USER_MANAGE'),
+  UserController.updateStatus
+);
+
+// حذف مستخدم
+router.delete(
+  '/:id',
+  permissionMiddleware('USER_MANAGE'),
+  UserController.delete
+);
 
 module.exports = router;

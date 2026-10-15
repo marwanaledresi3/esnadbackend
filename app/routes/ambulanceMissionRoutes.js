@@ -1,31 +1,32 @@
 const express = require('express');
 const router = express.Router();
+
 const AmbulanceMissionController = require('../controllers/AmbulanceMissionController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const roleMiddleware = require('../middlewares/roleMiddleware');
-const { ROLES } = require('../config/constants');
+const organizationMiddleware = require('../middlewares/organizationMiddleware');
+const permissionMiddleware = require('../middlewares/permissionMiddleware');
 
-// تطبيق التوثيق على جميع مسارات المهمات الإسعافية
+// تطبيق التوثيق وتحديد الجهة
 router.use(authMiddleware);
+router.use(organizationMiddleware);
 
 /**
  * @route   POST /api/v1/ambulance-missions/dispatch/:dispatchId/milestone
- * @desc    تسجيل نقطة تتبع جديدة للمهمة الإسعافية (En Route, On Scene, Transporting, etc.)
- * @access  Private (PARAMEDIC, DISPATCHER, ADMIN)
+ * @desc    تسجيل نقطة تتبع جديدة للمهمة الإسعافية
  */
 router.post(
   '/dispatch/:dispatchId/milestone',
-  roleMiddleware([ROLES.PARAMEDIC, ROLES.DISPATCHER, ROLES.ADMIN]),
+  permissionMiddleware('TRANSPORT_CREATE'),
   AmbulanceMissionController.addMilestone
 );
 
 /**
  * @route   GET /api/v1/ambulance-missions/dispatch/:dispatchId/timeline
- * @desc    استرجاع السجل الزمني الكامل ونقاط التتبع الخاصة بمهمة بلاغ معين
- * @access  Private (جميع المستخدمين الموثقين)
+ * @desc    استرجاع السجل الزمني الكامل ونقاط التتبع
  */
 router.get(
   '/dispatch/:dispatchId/timeline',
+  permissionMiddleware('TRANSPORT_VIEW'),
   AmbulanceMissionController.getTimeline
 );
 

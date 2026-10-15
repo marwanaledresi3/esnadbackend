@@ -10,15 +10,49 @@ const ApiError = require('./errors/ApiError');
 console.log("تم استيراد الميدلوير بنجاح");
 // استيراد مسارات وحدات النظام (System Routes)
 const authRoutes = require('./routes/authRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
+const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
+const roleRoutes = require('./routes/roleRoutes');
+const authorizationRoutes = require('./routes/authorizationRoutes');
 const caseRoutes = require('./routes/caseRoutes');
-const bodyRoutes = require('./routes/bodyRoutes');
-const incidentRoutes = require('./routes/incidentRoutes');
+const caseSubResourceRoutes = require('./routes/caseSubResourceRoutes');
+// const bodyRoutes = require('./routes/bodyRoutes');
+const bodyCaseRoutes = require('./routes/bodyCaseRoutes');
+// const incidentRoutes = require('./routes/incidentRoutes');
+const lookupRoutes = require('./routes/lookupRoutes')
 const ambulanceRoutes = require('./routes/ambulanceRoutes');
-const forensicRoutes = require('./routes/forensicRoutes');
+const forensicRequestRoutes = require('./routes/forensicRequestRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const ambulanceMissionRoutes = require('./routes/ambulanceMissionRoutes');
-const departmentRoutes = require('./routes/departmentRoutes');
+// const departmentRoutes = require('./routes/departmentRoutes');
+const userRoutes = require('./routes/userRoutes');
+// app.js
+const personRoutes = require('./routes/personRoutes');
 
+// استيراد المسارات
+const accountRequestRoutes = require('./routes/accountRequestRoutes');
+const organizationRoutes = require('./routes/organizationRoutes');
+const organizationMembershipRoutes = require('./routes/organizationMembershipRoutes');
+const organizationLinkRoutes = require('./routes/organizationLinkRoutes');
+const dataSharingRuleRoutes = require('./routes/dataSharingRuleRoutes');
+const sharedRecordRoutes = require('./routes/sharedRecordRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const sharingRoutes = require('./routes/sharingRoutes');
+// app.js
+const transportMissionRoutes = require('./routes/transportMissionRoutes');
+const vehicleDispatchRoutes = require('./routes/vehicleDispatchRoutes');
+const hospitalCustodyRoutes = require('./routes/hospitalCustodyRoutes');
+const bodyReleaseRoutes = require('./routes/bodyReleaseRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const transportRequestRoutes = require('./routes/transportRequestRoutes');
+
+// const authMiddleware = require('./middlewares/authMiddleware');
+// const requireSystemAdmin = require('./middlewares/requireSystemAdmin');
+
+// // استدعاء موجهات الأدمن
+// const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
+// const adminManagementRoutes = require('./routes/adminManagementRoutes'); // إن وجد
+// const adminAuditAndLinkRoutes = require('./routes/adminAuditAndLinkRoutes'); // إن وجد
 const app = express();
 
 // 1. إعدادات الأمان الأساسية
@@ -59,16 +93,69 @@ app.get('/health', (req, res) => {
 
 // 6. تسجيل مسارات النظام (API Routes Routing)
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/permissions', permissionRoutes);
+app.use('/api/v1/role-permissions', rolePermissionRoutes);
+app.use('/api/v1/roles', roleRoutes);
+app.use('/api/v1/authorizations', authorizationRoutes);
+app.use('/api/v1/case-details', caseSubResourceRoutes);
 app.use('/api/v1/cases', caseRoutes);
-app.use('/api/v1/bodies', bodyRoutes);
-app.use('/api/v1/incidents', incidentRoutes);
+// app.use('/api/v1/bodies', bodyRoutes);
+app.use('/api/v1/body-cases', bodyCaseRoutes);
+app.use('/api/v1/lookups',lookupRoutes)
 app.use('/api/v1/ambulances', ambulanceRoutes);
-app.use('/api/v1/forensics', forensicRoutes);
+app.use('/api/v1/forensic-requests', forensicRequestRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/ambulance-missions', ambulanceMissionRoutes);
-app.use('/api/v1/departments', departmentRoutes);
+// app.use('/api/v1/departments', departmentRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/persons', personRoutes);
 
+// تسجيل المسارات الرئيسية
+app.use('/api/v1/account-requests', accountRequestRoutes);
+app.use('/api/v1/organizations', organizationRoutes);
+app.use('/api/v1/memberships', organizationMembershipRoutes);
+app.use('/api/v1/organization-links', organizationLinkRoutes);
+app.use('/api/v1/sharing-rules', dataSharingRuleRoutes);
+app.use('/api/v1/shared-records', sharedRecordRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/sharing', sharingRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/transport-requests', transportRequestRoutes);
+// تسجيل الموجهات
+app.use('/api/v1/missions', transportMissionRoutes);
+app.use('/api/v1/vehicle-dispatches', vehicleDispatchRoutes);
+app.use('/api/v1/hospital', hospitalCustodyRoutes);
+app.use('/api/v1/body-releases', bodyReleaseRoutes);
 // 7. التقاط المسارات غير المعروفة (404 Not Found Handler)
+
+
+// app.js (جزء التسجيل)
+// ... الـ Middlewares العامة (app.use(express.json()), app.use(cors()), إلخ)
+app.use('/api/v1/documents', require('./routes/documentRoutes'));
+app.use('/api/v1/body-handovers', require('./routes/bodyHandoverRoutes'));
+app.use('/api/v1/body-release-orders', require('./routes/bodyReleaseOrderRoutes'));
+app.use('/api/v1/vehicle-dispatch-orders', require('./routes/vehicleDispatchOrderRoutes'));
+// app.use('/api/v1/ambulances', require('./routes/ambulanceRoutes'));
+app.use('/api/v1/storage-locations', require('./routes/storageLocationRoutes'));
+app.use('/api/v1/audit-logs', require('./routes/auditLogRoutes'));
+app.use('/api/v1/death-records', require('./routes/deathRecordRoutes'));
+app.use('/api/v1/case-disabilities', require('./routes/caseDisabilityRoutes'));
+// ==========================================
+// تسجيل مسارات الإدارة المركزية (SYSTEM_ADMIN)
+// ==========================================
+// app.use(
+//   '/api/v1/admin/dashboard',
+//   authMiddleware,
+//   requireSystemAdmin,
+//   adminDashboardRoutes
+// );
+
+// // إذا كنت قد فصلت باقي مسارات الأدمن في ملفات أخرى، يمكنك ربطها بنفس البادئة:
+// app.use('/api/v1/admin', authMiddleware, requireSystemAdmin, adminManagementRoutes);
+// app.use('/api/v1/admin', authMiddleware, requireSystemAdmin, adminAuditAndLinkRoutes);
+
+// ... باقي مسارات التطبيق العادية (Cases, Bodies, Transport, إلخ)
+// ... معالج الأخطاء العام (app.use(errorHandler))
 app.use((req, res, next) => {
   next(ApiError.notFound(`المسار المطلـوب (${req.originalUrl}) غير موجود بالنظام`));
 });

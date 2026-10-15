@@ -1,29 +1,71 @@
+// routes/caseRoutes.js
 const express = require('express');
 const router = express.Router();
+
 const CaseController = require('../controllers/CaseController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const roleMiddleware = require('../middlewares/roleMiddleware');
-const uploadMiddleware = require('../middlewares/uploadMiddleware');
+const organizationMiddleware = require('../middlewares/organizationMiddleware');
+const permissionMiddleware = require('../middlewares/permissionMiddleware');
 
-// حماية كافة المسارات بالمصادقة
 router.use(authMiddleware);
 
-// تسجيل حالة جديدة (يدعم إرفاق صورة)
-router.post(
-  '/', 
-  roleMiddleware(['DISPATCHER', 'RECEPTIONIST', 'PARAMEDIC', 'ADMIN']), 
-  uploadMiddleware.single('photo'), 
-  CaseController.createCase
+// قائمة الحالات
+router.get(
+  '/',
+  organizationMiddleware,
+  permissionMiddleware('CASE_VIEW'),
+  CaseController.getAll,
 );
 
-// جلب تفاصيل الحالة و الـ Timeline
-router.get('/:caseId', CaseController.getCaseDetails);
+// إحصائيات
+router.get('/count', CaseController.count);
 
-// تدوين حدث مساري في الـ Timeline
+// حالة واحدة
+router.get(
+  '/:id',
+  organizationMiddleware,
+  permissionMiddleware('CASE_VIEW'),
+  CaseController.getById,
+);
+
+// إنشاء حالة
 router.post(
-  '/:caseId/events', 
-  roleMiddleware(['DISPATCHER', 'DOCTOR', 'FORENSIC_OFFICER', 'ADMIN']), 
-  CaseController.addEvent
+  '/',
+  organizationMiddleware,
+  permissionMiddleware('CASE_CREATE'),
+  CaseController.create,
+);
+
+// تحديث حالة
+router.put(
+  '/:id',
+  organizationMiddleware,
+  permissionMiddleware('CASE_UPDATE'),
+  CaseController.update,
+);
+
+// تغيير الحالة
+router.patch(
+  '/:id/status',
+  organizationMiddleware,
+  permissionMiddleware('CASE_UPDATE'),
+  CaseController.changeStatus,
+);
+
+// إغلاق الحالة
+router.patch(
+  '/:id/close',
+  organizationMiddleware,
+  permissionMiddleware('CASE_UPDATE'),
+  CaseController.close,
+);
+
+// حذف
+router.delete(
+  '/:id',
+  organizationMiddleware,
+  permissionMiddleware('CASE_UPDATE'),
+  CaseController.delete,
 );
 
 module.exports = router;

@@ -1,59 +1,236 @@
+// controllers/CaseController.js
 const CaseService = require('../services/CaseService');
-const Case = require('../models/Case');
-const apiResponse = require('../utils/apiResponse');
 
 class CaseController {
-  // إدخال حالة جديدة
-  static async createCase(req, res, next) {
+  static async getAll(req, res) {
     try {
-      const payload = {
-        ...req.body,
-        actor_user_id: req.user.user_id,
-        facility_id: req.user.organization_id
-      };
+      const {
+        search,
+        case_type,
+        case_status,
+        person_id,
+        organization_id,
+        source_organization_id,
+        priority,
+        from_date,
+        to_date,
+        limit,
+        offset,
+      } = req.query;
 
-      // إذا تم رفع صورة مجهول الهوية عبر Multer/Cloudinary
-      if (req.file) {
-        payload.photo_url = req.file.path;
-      }
+      const items = await CaseService.list({
+        search,
+        case_type,
+        case_status,
+        person_id,
+        organization_id,
+        source_organization_id,
+        priority,
+        from_date,
+        to_date,
+        limit: limit ? Number(limit) : 100,
+        offset: offset ? Number(offset) : 0,
+      });
 
-      const result = await CaseService.createNewCase(payload);
-      return apiResponse.success(res, 'تم تسجيل الحالة بملف زمني بنجاح', result, 201);
+      return res.json({
+        success: true,
+        message: 'قائمة الحالات',
+        data: items,
+      });
     } catch (error) {
-      next(error);
+      console.error('CaseController.getAll', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب قائمة الحالات',
+      });
     }
   }
 
-  // عرض تفاصيل الحالة والسجل الزمني الكامل (Timeline)
-  static async getCaseDetails(req, res, next) {
+  static async getById(req, res) {
     try {
-      const { caseId } = req.params;
-      const caseDetails = await Case.findByIdWithTimeline(caseId);
-
-      if (!caseDetails) {
-        return res.status(404).json({ success: false, message: 'الحالة غير موجودة' });
+      const item = await CaseService.getById(req.params.id);
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: 'الحالة غير موجودة',
+        });
       }
-
-      return apiResponse.success(res, 'تفاصيل ملف الحالة', caseDetails);
+      return res.json({ success: true, data: item });
     } catch (error) {
-      next(error);
+      console.error('CaseController.getById', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب الحالة',
+      });
     }
   }
 
-  // إضافة تحديث أو حدث زمني للحالة
-  static async addEvent(req, res, next) {
+  static async create(req, res) {
     try {
-      const { caseId } = req.params;
-      const eventPayload = {
-        ...req.body,
-        actor_user_id: req.user.user_id,
-        facility_id: req.user.organization_id
-      };
+      const {
+        person_id,
+        case_type,
+        case_status,
+        arrival_datetime,
+        source_organization_id,
+        source_location,
+        referral_number,
+        referral_datetime,
+        priority,
+        department_id,
+        current_location,
+        notes,
+        organization_id,
+      } = req.body;
 
-      const newEvent = await CaseService.addCaseEvent(caseId, eventPayload);
-      return apiResponse.success(res, 'تم تدوين الحدث في الـ Timeline بنجاح', newEvent, 201);
+      if (!case_type || !organization_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'case_type و organization_id مطلوبان',
+        });
+      }
+
+      const created = await CaseService.create(
+        {
+          person_id,
+          case_type,
+          case_status,
+          arrival_datetime,
+          source_organization_id,
+          source_location,
+          referral_number,
+          referral_datetime,
+          priority,
+          department_id,
+          current_location,
+          notes,
+          organization_id,
+        },
+        req.user?.id,
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: 'تم إنشاء الحالة بنجاح',
+        data: created,
+      });
     } catch (error) {
-      next(error);
+      console.error('CaseController.create', error);
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'تعذر إنشاء الحالة',
+      });
+    }
+  }
+
+  static async update(req, res) {
+    try {
+      const updated = await CaseService.update(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: 'الحالة غير موجودة أو لا توجد حقول للتحديث',
+        });
+      }
+      return res.json({
+        success: true,
+        message: 'تم تحديث الحالة',
+        data: updated,
+      });
+    } catch (error) {
+      console.error('CaseController.update', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر تحديث الحالة',
+      });
+    }
+  }
+
+  static async changeStatus(req, res) {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message: 'status مطلوب',
+        });
+      }
+      const updated = await CaseService.changeStatus(req.params.id, status);
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: 'الحالة غير موجودة',
+        });
+      }
+      return res.json({
+        success: true,
+        message: 'تم تحديث حالة الحالة',
+        data: updated,
+      });
+    } catch (error) {
+      console.error('CaseController.changeStatus', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر تحديث الحالة',
+      });
+    }
+  }
+
+  static async close(req, res) {
+    try {
+      const updated = await CaseService.close(req.params.id);
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: 'الحالة غير موجودة',
+        });
+      }
+      return res.json({
+        success: true,
+        message: 'تم إغلاق الحالة',
+        data: updated,
+      });
+    } catch (error) {
+      console.error('CaseController.close', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر إغلاق الحالة',
+      });
+    }
+  }
+
+  static async delete(req, res) {
+    try {
+      const ok = await CaseService.delete(req.params.id);
+      if (!ok) {
+        return res.status(404).json({
+          success: false,
+          message: 'الحالة غير موجودة',
+        });
+      }
+      return res.json({
+        success: true,
+        message: 'تم حذف الحالة',
+      });
+    } catch (error) {
+      console.error('CaseController.delete', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر حذف الحالة',
+      });
+    }
+  }
+
+  static async count(req, res) {
+    try {
+      const total = await CaseService.count();
+      return res.json({ success: true, data: { total } });
+    } catch (error) {
+      console.error('CaseController.count', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب الإحصائيات',
+      });
     }
   }
 }

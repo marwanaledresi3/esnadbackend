@@ -1,38 +1,117 @@
-const Ambulance = require('../models/Ambulance');
+// controllers/AmbulanceController.js
 const AmbulanceService = require('../services/AmbulanceService');
-const apiResponse = require('../utils/apiResponse');
 
 class AmbulanceController {
-  // عرض سيارات الإسعاف الجاهزة للخدمة
-  static async getAvailableAmbulances(req, res, next) {
+  static async getAll(req, res) {
     try {
-      const ambulances = await Ambulance.findAvailable();
-      return apiResponse.success(res, 'سيارات الإسعاف المتاحة', ambulances);
+      const { status, organization_id, search, limit, offset } = req.query;
+      const items = await AmbulanceService.list({
+        status,
+        organization_id,
+        search,
+        limit: limit ? Number(limit) : 200,
+        offset: offset ? Number(offset) : 0,
+      });
+      return res.json({ success: true, message: 'قائمة السيارات', data: items });
     } catch (error) {
-      next(error);
+      console.error('AmbulanceController.getAll', error);
+      return res.status(500).json({ success: false, message: 'تعذر جلب السيارات' });
     }
   }
 
-  // إرسال وتكليف فريق إسعاف بمهمة بلاغ
-  static async dispatchAmbulance(req, res, next) {
+  static async getById(req, res) {
     try {
-      const result = await AmbulanceService.dispatchAmbulance(req.body);
-      return apiResponse.success(res, 'تم تكليف وتوجيه الإسعاف للموقع بنجاح', result, 201);
+      const item = await AmbulanceService.getById(req.params.id);
+      if (!item) return res.status(404).json({ success: false, message: 'السيارة غير موجودة' });
+      return res.json({ success: true, data: item });
     } catch (error) {
-      next(error);
+      console.error('AmbulanceController.getById', error);
+      return res.status(500).json({ success: false, message: 'تعذر جلب السيارة' });
     }
   }
 
-  // تحديث حالة المهمة الإسعافية الميدانية (وصول / نقل / إنهاء)
-  static async updateDispatchStatus(req, res, next) {
+  static async create(req, res) {
     try {
-      const { dispatchId } = req.params;
-      const { dispatch_status } = req.body;
+      const { organization_id, vehicle_code, vehicle_type, status, notes } = req.body;
 
-      const updatedDispatch = await Ambulance.updateDispatchStatus(dispatchId, dispatch_status);
-      return apiResponse.success(res, 'تم تحديث حالة المهمة الإسعافية بنجاح', updatedDispatch);
+      if (!organization_id || !vehicle_code) {
+        return res.status(400).json({
+          success: false,
+          message: 'organization_id و vehicle_code مطلوبان',
+        });
+      }
+
+      const created = await AmbulanceService.create({
+        organization_id,
+        vehicle_code,
+        vehicle_type,
+        status,
+        notes,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'تم إضافة السيارة',
+        data: created,
+      });
     } catch (error) {
-      next(error);
+      console.error('AmbulanceController.create', error);
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'تعذر الإضافة',
+      });
+    }
+  }
+
+  static async update(req, res) {
+    try {
+      const updated = await AmbulanceService.update(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: 'السيارة غير موجودة أو لا توجد حقول للتحديث',
+        });
+      }
+      return res.json({ success: true, message: 'تم التحديث', data: updated });
+    } catch (error) {
+      console.error('AmbulanceController.update', error);
+      return res.status(500).json({ success: false, message: 'تعذر التحديث' });
+    }
+  }
+
+  static async changeStatus(req, res) {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ success: false, message: 'status مطلوب' });
+      }
+      const updated = await AmbulanceService.changeStatus(req.params.id, status);
+      if (!updated) return res.status(404).json({ success: false, message: 'السيارة غير موجودة' });
+      return res.json({ success: true, data: updated });
+    } catch (error) {
+      console.error('AmbulanceController.changeStatus', error);
+      return res.status(500).json({ success: false, message: 'تعذر التحديث' });
+    }
+  }
+
+  static async delete(req, res) {
+    try {
+      const ok = await AmbulanceService.delete(req.params.id);
+      if (!ok) return res.status(404).json({ success: false, message: 'السيارة غير موجودة' });
+      return res.json({ success: true, message: 'تم الحذف' });
+    } catch (error) {
+      console.error('AmbulanceController.delete', error);
+      return res.status(500).json({ success: false, message: 'تعذر الحذف' });
+    }
+  }
+
+  static async count(req, res) {
+    try {
+      const total = await AmbulanceService.count();
+      return res.json({ success: true, data: { total } });
+    } catch (error) {
+      console.error('AmbulanceController.count', error);
+      return res.status(500).json({ success: false, message: 'تعذر الجلب' });
     }
   }
 }

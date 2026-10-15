@@ -2,21 +2,46 @@ const express = require('express');
 const router = express.Router();
 const PersonController = require('../controllers/PersonController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const roleMiddleware = require('../middlewares/roleMiddleware');
+const organizationMiddleware = require('../middlewares/organizationMiddleware');
+const permissionMiddleware = require('../middlewares/permissionMiddleware');
 
 router.use(authMiddleware);
+router.use(organizationMiddleware);
 
-// البحث عن شخص برقم الهوية أو الرقم الموحد
-router.get('/search', PersonController.getPersonByIdentification);
+// قائمة الأشخاص
+router.get('/',
+  permissionMiddleware('CASE_VIEW'),
+   PersonController.getAll
+  );
 
-// عرض قائمة مجهولي الهوية
-router.get('/unidentified', PersonController.getUnidentifiedPersons);
+// إحصائيات
+router.get('/count',
+  permissionMiddleware('CASE_VIEW'),
+   PersonController.count
+  );
 
-// تحديث وتثبيت هوية شخص مجهول
-router.patch(
-  '/:personId/identify', 
-  roleMiddleware(['ADMIN', 'RECEPTIONIST', 'FORENSIC_OFFICER']), 
-  PersonController.identifyPerson
+// شخص واحد
+router.get('/:id', 
+  permissionMiddleware('CASE_VIEW'),
+  PersonController.getById
+);
+
+// إنشاء
+router.post('/',
+  permissionMiddleware('CASE_VIEW'),
+   PersonController.create
+  );
+
+// تحديث
+router.put('/:id', 
+  permissionMiddleware('CASE_VIEW'),
+  PersonController.update
+);
+
+// حذف
+router.delete('/:id', 
+  permissionMiddleware('CASE_VIEW'),
+  PersonController.delete
 );
 
 module.exports = router;

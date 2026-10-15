@@ -1,109 +1,173 @@
-const Person = require('../models/Person');
-const Case = require('../models/Case');
-const apiResponse = require('../utils/apiResponse');
-const ApiError = require('../errors/ApiError');
+// controllers/PersonController.js
+const PersonService = require('../services/PersonService');
 
 class PersonController {
-  // 1. البحث عن شخص برقم الهوية أو الرقم الموحد
-  static async getPersonByIdentification(req, res, next) {
+  static async getAll(req, res) {
     try {
-      const { search } = req.query; // يمكن أن يكون national_id أو person_number
+      const {
+        search,
+        gender,
+        identity_status,
+        national_id,
+        limit,
+        offset,
+      } = req.query;
 
-      if (!search) {
-        throw ApiError.badRequest('يرجى تقديم رقم الهوية أو الرقم الموحد للبحث');
-      }
+      const items = await PersonService.list({
+        search,
+        gender,
+        identity_status,
+        national_id,
+        limit: limit ? Number(limit) : 100,
+        offset: offset ? Number(offset) : 0,
+      });
 
-      const query = `
-        SELECT p.*, c.case_id, c.case_number, c.current_status
-        FROM persons p
-        LEFT JOIN cases c ON p.person_id = c.person_id
-        WHERE p.national_id = $1 OR p.person_number = $1
-      `;
-      
-      const { pool } = require('../config/db');
-      const result = await pool.query(query, [search]);
-
-      if (result.rows.length === 0) {
-        throw ApiError.notFound('لم يتم العثور على الشخص المطلوبة بياناته');
-      }
-
-      return apiResponse.success(res, 'تم العثور على بيانات الشخص بنجاح', result.rows[0]);
+      return res.json({
+        success: true,
+        message: 'قائمة الأشخاص',
+        data: items,
+      });
     } catch (error) {
-      next(error);
+      console.error('PersonController.getAll', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب قائمة الأشخاص',
+      });
     }
   }
 
-  // 2. تحديث هوية شخص (تثبيت الهوية عند التعرف على مجهول)
-  static async identifyPerson(req, res, next) {
+  static async getById(req, res) {
     try {
-      const { personId } = req.params;
-      const { full_name, national_id, age } = req.body;
-
-      if (!full_name || !national_id) {
-        throw ApiError.badRequest('الاسم الكامل ورقم الهوية الوطنية مطلوبة لإنهاء مجهولية الشخص');
+      const item = await PersonService.getById(req.params.id);
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: 'الشخص غير موجود',
+        });
       }
-
-      // 1. تحديث بيانات الشخص
-      const updatedPerson = await Person.updateIdentity(personId, {
-        full_name,
-        national_id,
-        identity_status: 'KNOWN'
+      return res.json({ success: true, data: item });
+    } catch (error) {
+      console.error('PersonController.getById', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب الشخص',
       });
+    }
+  }
 
-      if (!updatedPerson) {
-        throw ApiError.notFound('سجل الشخص غير موجود');
-      }
+  static async create(req, res) {
+    try {
+      const {
+        full_name,
+        first_name,
+        father_name,
+        grandfather_name,
+        family_name,
+        gender,
+        date_of_birth,
+        national_id,
+        phone,
+        address,
+        identity_status,
+      } = req.body;
 
-      // 2. توثيق حدث التعرف في السجل الزمني (Timeline) للحالة المرتبطة
-      const caseQuery = `SELECT case_id FROM cases WHERE person_id = $1`;
-      const { pool } = require('../config/db');
-      const caseRes = await pool.query(caseQuery, [personId]);
-
-      if (caseRes.rows.length > 0) {
-        const caseId = caseRes.rows[0].case_id;
-        await Case.addEvent({
-          case_id: caseId,
-          event_type: 'IDENTITY_VERIFIED',
-          description: `تم التعرف على هوية الشخص وتثبيت الاسم: ${full_name} - الهوية: ${national_id}`,
-          facility_id: req.user.organization_id,
-          actor_user_id: req.user.user_id,
-          event_metadata: { previous_status: 'UNKNOWN', new_status: 'KNOWN' }
+      if (!first_name && !full_name) {
+        return res.status(400).json({
+          success: false,
+          message: 'الاسم الأول أو الاسم الكامل مطلوب',
         });
       }
 
-      return apiResponse.success(res, 'تم تحديث هوية الشخص وتوثيق الإجراء بنجاح', updatedPerson);
+      const created = await PersonService.create(
+        {
+          full_name,
+          first_name,
+          father_name,
+          grandfather_name,
+          family_name,
+          gender,
+          date_of_birth,
+          national_id,
+          phone,
+          address,
+          identity_status: identity_status || 'known',
+        },
+        req.user?.id,
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: 'تم إنشاء الشخص بنجاح',
+        data: created,
+      });
     } catch (error) {
-      next(error);
+      console.error('PersonController.create', error);
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'تعذر إنشاء الشخص',
+      });
     }
   }
 
-  // 3. عرض قائمة المجهولين (Unidentified Persons) مع تصفية الفلاتر
-  static async getUnidentifiedPersons(req, res, next) {
+  static async update(req, res) {
     try {
-      const { gender, limit = 20, offset = 0 } = req.query;
-      
-      let query = `
-        SELECT p.*, c.case_id, c.case_number, c.created_at AS case_date
-        FROM persons p
-        JOIN cases c ON p.person_id = c.person_id
-        WHERE p.identity_status = 'UNKNOWN'
-      `;
-      const values = [];
-
-      if (gender) {
-        values.push(gender);
-        query += ` AND p.gender = $${values.length}`;
+      const updated = await PersonService.update(
+        req.params.id,
+        req.body,
+        req.user?.id,
+      );
+      if (!updated) {
+        return res.status(404).json({
+          success: false,
+          message: 'الشخص غير موجود أو لا توجد حقول للتحديث',
+        });
       }
-
-      values.push(limit, offset);
-      query += ` ORDER BY p.created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
-
-      const { pool } = require('../config/db');
-      const result = await pool.query(query, values);
-
-      return apiResponse.success(res, 'قائمة الأشخاص مجهولي الهوية', result.rows);
+      return res.json({
+        success: true,
+        message: 'تم تحديث بيانات الشخص',
+        data: updated,
+      });
     } catch (error) {
-      next(error);
+      console.error('PersonController.update', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر تحديث الشخص',
+      });
+    }
+  }
+
+  static async delete(req, res) {
+    try {
+      const ok = await PersonService.delete(req.params.id);
+      if (!ok) {
+        return res.status(404).json({
+          success: false,
+          message: 'الشخص غير موجود',
+        });
+      }
+      return res.json({
+        success: true,
+        message: 'تم حذف الشخص',
+      });
+    } catch (error) {
+      console.error('PersonController.delete', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر حذف الشخص',
+      });
+    }
+  }
+
+  static async count(req, res) {
+    try {
+      const total = await PersonService.count();
+      return res.json({ success: true, data: { total } });
+    } catch (error) {
+      console.error('PersonController.count', error);
+      return res.status(500).json({
+        success: false,
+        message: 'تعذر جلب الإحصائيات',
+      });
     }
   }
 }
