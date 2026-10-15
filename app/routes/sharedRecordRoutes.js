@@ -1,27 +1,38 @@
+// routes/sharedRecordRoutes.js
 const express = require('express');
 const router = express.Router();
+
 const SharedRecordController = require('../controllers/SharedRecordController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const organizationMiddleware = require('../middlewares/organizationMiddleware');
 const permissionMiddleware = require('../middlewares/permissionMiddleware');
-const { shareRecordValidation, revokeShareValidation } = require('../validators/sharedRecordValidator');
 
+router.use(authMiddleware);
+
+router.get('/', SharedRecordController.getAll);
+router.get('/shared-with-me', SharedRecordController.getSharedWithMe);
+router.get('/:id', SharedRecordController.getById);
+
+// المشاركة تتطلب صلاحية SHARING_CREATE
 router.post(
   '/',
-  authMiddleware,
   organizationMiddleware,
   permissionMiddleware('SHARING_CREATE'),
-  shareRecordValidation,
-  SharedRecordController.share
+  SharedRecordController.create,
 );
 
-router.post(
-  '/:shareId/revoke',
-  authMiddleware,
+router.patch(
+  '/:id/revoke',
   organizationMiddleware,
   permissionMiddleware('SHARING_CREATE'),
-  revokeShareValidation,
-  SharedRecordController.revoke
+  SharedRecordController.revoke,
+);
+
+router.delete(
+  '/:id',
+  organizationMiddleware,
+  permissionMiddleware('SHARING_CREATE'),
+  SharedRecordController.delete,
 );
 
 module.exports = router;

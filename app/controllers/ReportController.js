@@ -1,6 +1,6 @@
 // controllers/ReportController.js
 const ReportService = require('../services/ReportService');
-
+const PdfService = require('../services/PDFService');
 class ReportController {
   // ==================== Reports ====================
   static async getAll(req, res) {
@@ -204,6 +204,45 @@ class ReportController {
       return res.status(500).json({ success: false, message: 'تعذر الحذف' });
     }
   }
+  static async exportPdf(req, res) {
+  try {
+    const report = await ReportService.getById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ success: false, message: 'التقرير غير موجود' });
+    }
+
+    // اجلب البيانات مرة أخرى من report_type
+    const reportType = await db.query(
+      `SELECT code FROM report_types WHERE id = $1`,
+      [report.report_type_id],
+    );
+
+    if (reportType.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'نوع التقرير غير معروف' });
+    }
+
+    const data = await ReportService.generate(reportType.rows[0].code, {
+      organizationId: report.organization_id,
+      periodFrom: report.period_from,
+      periodTo: report.period_to,
+    });
+
+    const fullReport = { ...report, data };
+
+    // اسم الملف
+    const filename = `${report.report_number}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // ولّد PDF
+    PdfService.generateReport(fullReport, res);
+  } catch (error) {
+    console.error('ReportController.exportPdf', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: 'تعذر التصدير' });
+    }
+  }
+}
 }
 
 module.exports = ReportController;

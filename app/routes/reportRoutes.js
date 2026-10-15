@@ -16,7 +16,12 @@ router.get('/preview/:code', permissionMiddleware('REPORT_CREATE'), ReportContro
 router.get('/:id', organizationMiddleware, permissionMiddleware('REPORT_VIEW'), ReportController.getById);
 router.post('/', organizationMiddleware, permissionMiddleware('REPORT_CREATE'), ReportController.create);
 router.delete('/:id', organizationMiddleware, permissionMiddleware('REPORT_CREATE'), ReportController.delete);
-
+router.get(
+  '/:id/pdf',
+  organizationMiddleware,
+  permissionMiddleware('REPORT_EXPORT'),
+  ReportController.exportPdf,
+);
 // Shares
 router.post('/:id/share', organizationMiddleware, permissionMiddleware('REPORT_VIEW'), ReportController.share);
 router.patch('/shares/:shareId/revoke', organizationMiddleware, ReportController.revokeShare);

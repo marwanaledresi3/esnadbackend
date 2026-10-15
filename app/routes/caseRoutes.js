@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const CaseController = require('../controllers/CaseController');
+const ExcelService = require('../services/ExcelService');
 const authMiddleware = require('../middlewares/authMiddleware');
 const organizationMiddleware = require('../middlewares/organizationMiddleware');
 const permissionMiddleware = require('../middlewares/permissionMiddleware');
@@ -15,6 +16,14 @@ router.get(
   organizationMiddleware,
   permissionMiddleware('CASE_VIEW'),
   CaseController.getAll,
+);
+
+// قائمة الحالات
+router.get(
+  '/export-injured',
+  organizationMiddleware,
+  permissionMiddleware('CASE_VIEW'),
+  ExcelService.exportInjuredCasesToExcel,
 );
 
 // إحصائيات
