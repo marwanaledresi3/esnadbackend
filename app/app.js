@@ -120,6 +120,7 @@ app.use('/api/v1/profile', require('./routes/profileRoutes'));
 app.use('/api/v1/organization-settings', require('./routes/organizationSettingsRoutes'));
 app.use('/api/v1/recipients', recipientRoutes);
 app.use('/api/v1/recipients-link', authorizationRecipientRoutes);
+app.use('/api/v1/exports', require('./routes/exportRoutes'));
 app.use((req, res, next) => {
   next(ApiError.notFound(`المسار المطلـوب (${req.originalUrl}) غير موجود بالنظام`));
 });

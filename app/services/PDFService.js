@@ -252,6 +252,133 @@ doc.moveDown(2);
 
   doc.end();
 }
+// services/PdfService.js
+
+/**
+ * توليد PDF لجدول عام
+ */
+static generateTable({ title, columns, rows, metadata = {}, stream }) {
+  const doc = new PDFDocument({
+    size: 'A4',
+    layout: 'landscape', // أفقي للجداول الكبيرة
+    margins: { top: 40, bottom: 40, left: 30, right: 30 },
+  });
+
+  doc.registerFont('Cairo', FONT_REGULAR);
+  doc.registerFont('Cairo-Bold', FONT_BOLD);
+  doc.pipe(stream);
+
+  // ═══ العنوان ═══
+  doc
+    .font('Cairo-Bold')
+    .fontSize(18)
+    .fillColor('#12304A')
+    .text(title, { align: 'center' });
+
+  doc.moveDown(0.3);
+
+  if (metadata.user || metadata.generated_at) {
+    const info = [];
+    if (metadata.user) info.push(`بواسطة: ${metadata.user}`);
+    if (metadata.generated_at) info.push(`التاريخ: ${metadata.generated_at}`);
+
+    doc
+      .font('Cairo')
+      .fontSize(9)
+      .fillColor('#718096')
+      .text(info.join('  |  '), { align: 'center' });
+
+    doc.moveDown(0.8);
+  }
+
+  // ═══ الجدول ═══
+  const tableTop = doc.y;
+  const tableWidth = doc.page.width - 60;
+  const colWidth = tableWidth / columns.length;
+  const rowHeight = 22;
+  const headerHeight = 26;
+
+  // ═══ رأس الجدول ═══
+  doc
+    .rect(30, tableTop, tableWidth, headerHeight)
+    .fill('#12304A');
+
+  doc.font('Cairo-Bold').fontSize(9).fillColor('#FFFFFF');
+  columns.forEach((col, i) => {
+    doc.text(col.header, 30 + i * colWidth + 4, tableTop + 8, {
+      width: colWidth - 8,
+      align: 'right',
+    });
+  });
+
+  let y = tableTop + headerHeight;
+
+  // ═══ الصفوف ═══
+  rows.forEach((row, rowIdx) => {
+    // صفحة جديدة إذا تجاوزنا
+    if (y + rowHeight > doc.page.height - 60) {
+      doc.addPage();
+      y = 40;
+
+      // ارسم رأس الجدول مرة أخرى
+      doc
+        .rect(30, y, tableWidth, headerHeight)
+        .fill('#12304A');
+
+      doc.font('Cairo-Bold').fontSize(9).fillColor('#FFFFFF');
+      columns.forEach((col, i) => {
+        doc.text(col.header, 30 + i * colWidth + 4, y + 8, {
+          width: colWidth - 8,
+          align: 'right',
+        });
+      });
+
+      y += headerHeight;
+    }
+
+    // خلفية متبادلة
+    if (rowIdx % 2 === 0) {
+      doc.rect(30, y, tableWidth, rowHeight).fill('#F4F7FB');
+    }
+
+    doc.rect(30, y, tableWidth, rowHeight).stroke('#E5EBF2');
+
+    doc.font('Cairo').fontSize(8).fillColor('#12304A');
+    columns.forEach((col, i) => {
+      let val = row[col.key];
+      if (val == null) val = '—';
+      if (val instanceof Date) {
+        val = val.toISOString().split('T')[0];
+      }
+      doc.text(String(val).substring(0, 50), 30 + i * colWidth + 4, y + 6, {
+        width: colWidth - 8,
+        align: 'right',
+        lineBreak: false,
+        ellipsis: true,
+      });
+    });
+
+    y += rowHeight;
+  });
+
+  // ═══ التذييل ═══
+  const pageCount = doc.bufferedPageRange().count;
+  for (let i = 0; i < pageCount; i++) {
+    doc.switchToPage(i);
+    doc
+      .font('Cairo')
+      .fontSize(7)
+      .fillColor('#A0AEC0')
+      .text(
+        `نظام إسناد • صفحة ${i + 1} من ${pageCount}`,
+        30,
+        doc.page.height - 25,
+        { width: tableWidth, align: 'center' },
+      );
+  }
+
+  doc.end();
+}
 
 static _statusLabel(status) {
   const map = {

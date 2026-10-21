@@ -63,20 +63,57 @@ class OrganizationSettingsController {
    * تحديث إعدادات جهة
    */
   static async upsert(req, res) {
-    try {
-      const { orgId } = req.params;
-      const userId = req.user?.id;
+  try {
+    const { orgId } = req.params;
+    const userId = req.user?.id;
 
-      // تحقق من وجود الجهة
-      const org = await Organization.getById(orgId);
-      if (!org) {
-        return res.status(404).json({
-          success: false,
-          message: 'الجهة غير موجودة',
-        });
-      }
+    const org = await Organization.getById(orgId);
+    if (!org) {
+      return res.status(404).json({
+        success: false,
+        message: 'الجهة غير موجودة',
+      });
+    }
 
-      const {
+    const {
+      // البيانات الأساسية
+      header_ar,
+      header_en,
+      footer_text,
+      logo_url,
+      stamp_url,
+      official_signature,
+      signer_title,
+      contact_phone,
+      contact_email,
+      address,
+      website,
+      metadata,
+      // خيارات التصدير
+      show_pdf_cases,
+      show_excel_cases,
+      show_pdf_body_cases,
+      show_excel_body_cases,
+      show_pdf_deaths,
+      show_excel_deaths,
+      show_pdf_authorizations,
+      show_excel_authorizations,
+      show_pdf_reports,
+      show_excel_reports,
+      // تصميم PDF
+      show_logo_in_pdf,
+      show_stamp_in_pdf,
+      show_signature_in_pdf,
+      signature_text,
+      // الإعدادات الافتراضية
+      default_authorization_validity_days,
+      default_report_period_days,
+      default_export_format,
+    } = req.body;
+
+    const settings = await OrganizationSettings.upsert(
+      orgId,
+      {
         header_ar,
         header_en,
         footer_text,
@@ -89,50 +126,50 @@ class OrganizationSettingsController {
         address,
         website,
         metadata,
-      } = req.body;
+        show_pdf_cases,
+        show_excel_cases,
+        show_pdf_body_cases,
+        show_excel_body_cases,
+        show_pdf_deaths,
+        show_excel_deaths,
+        show_pdf_authorizations,
+        show_excel_authorizations,
+        show_pdf_reports,
+        show_excel_reports,
+        show_logo_in_pdf,
+        show_stamp_in_pdf,
+        show_signature_in_pdf,
+        signature_text,
+        default_authorization_validity_days,
+        default_report_period_days,
+        default_export_format,
+      },
+      userId,
+    );
 
-      const settings = await OrganizationSettings.upsert(
-        orgId,
-        {
-          header_ar,
-          header_en,
-          footer_text,
-          logo_url,
-          stamp_url,
-          official_signature,
-          signer_title,
-          contact_phone,
-          contact_email,
-          address,
-          website,
-          metadata,
-        },
-        userId,
-      );
+    await AuditLogService.log({
+      user_id: userId,
+      organization_id: orgId,
+      action: 'ORGANIZATION_SETTINGS_UPDATE',
+      entity_type: 'organization_settings',
+      entity_id: settings.id,
+      result: 'success',
+      new_values: settings,
+    });
 
-      await AuditLogService.log({
-        user_id: userId,
-        organization_id: orgId,
-        action: 'ORGANIZATION_SETTINGS_UPDATE',
-        entity_type: 'organization_settings',
-        entity_id: settings.id,
-        result: 'success',
-        new_values: settings,
-      });
-
-      return res.json({
-        success: true,
-        message: 'تم حفظ الإعدادات',
-        data: settings,
-      });
-    } catch (error) {
-      console.error('OrganizationSettingsController.upsert', error);
-      return res.status(500).json({
-        success: false,
-        message: 'تعذر حفظ الإعدادات',
-      });
-    }
+    return res.json({
+      success: true,
+      message: 'تم حفظ الإعدادات',
+      data: settings,
+    });
+  } catch (error) {
+    console.error('OrganizationSettingsController.upsert', error);
+    return res.status(500).json({
+      success: false,
+      message: 'تعذر حفظ الإعدادات',
+    });
   }
+}
 
   /**
    * GET /organization-settings/me

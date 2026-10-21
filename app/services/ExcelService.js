@@ -6,6 +6,13 @@ class ExcelService {
  * دالة تصدير قائمة المصابين إلى ملف Excel
  */
 static async  exportInjuredCasesToExcel(req, res) {
+   const sourceOrgId = req.currentOrganizationId;
+   if (!sourceOrgId) {
+        return res.status(409).json({
+          success: false,
+          message: 'معرف الجهة مطلوب   ',
+        });
+      }
   try {
     // 1. استعلام الجلب من قاعدة البيانات للحالات المخزنة
     const query = `
@@ -24,11 +31,11 @@ static async  exportInjuredCasesToExcel(req, res) {
       FROM cases c
       LEFT JOIN persons p ON c.person_id = p.id
       LEFT JOIN organizations org ON c.organization_id = org.id
-      WHERE c.case_type = 'INJURED' -- أو حسب المسمى المستخدم لنوع المصابين
+      WHERE c.organization_id = $1
       ORDER BY c.arrival_datetime DESC;
     `;
 
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query,[sourceOrgId]);
 
     // 2. إنشاء كتاب عمل ورقة جديدة
     const workbook = new ExcelJS.Workbook();
@@ -112,5 +119,143 @@ static async  exportInjuredCasesToExcel(req, res) {
     res.status(500).json({ message: 'حدث خطأ أثناء تصدير ملف الإكسل' });
   }
 }
+ static async generate({
+    title,
+    columns,
+    rows,
+    stream,
+    metadata = {},
+  }) {
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = 'نظام إسناد';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet(title || 'Report', {
+      views: [{ rightToLeft: true }],
+    });
+
+    // ══════════════════════════════════════════════
+    // 1. الرأس (الترويسة)
+    // ══════════════════════════════════════════════
+    let rowIndex = 1;
+
+    // اسم الجهة
+    if (metadata.organization) {
+      sheet.mergeCells(`A${rowIndex}:${String.fromCharCode(64 + columns.length)}${rowIndex}`);
+      const cell = sheet.getCell(`A${rowIndex}`);
+      cell.value = metadata.organization;
+      cell.font = { bold: true, size: 14, color: { argb: 'FF12304A' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      rowIndex++;
+    }
+
+    // عنوان التقرير
+    sheet.mergeCells(`A${rowIndex}:${String.fromCharCode(64 + columns.length)}${rowIndex}`);
+    const titleCell = sheet.getCell(`A${rowIndex}`);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 16, color: { argb: 'FF087E8B' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    rowIndex++;
+
+    // معلومات إضافية
+    if (metadata.user || metadata.generated_at) {
+      sheet.mergeCells(`A${rowIndex}:${String.fromCharCode(64 + columns.length)}${rowIndex}`);
+      const infoCell = sheet.getCell(`A${rowIndex}`);
+      const infoParts = [];
+      if (metadata.user) infoParts.push(`بواسطة: ${metadata.user}`);
+      if (metadata.generated_at) infoParts.push(`التاريخ: ${metadata.generated_at}`);
+      infoCell.value = infoParts.join('  |  ');
+      infoCell.font = { size: 10, color: { argb: 'FF718096' } };
+      infoCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      rowIndex++;
+    }
+
+    // سطر فارغ
+    rowIndex++;
+
+    // ══════════════════════════════════════════════
+    // 2. رأس الجدول
+    // ══════════════════════════════════════════════
+    const headerRowIndex = rowIndex;
+    const headerRow = sheet.getRow(headerRowIndex);
+
+    columns.forEach((col, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = col.header;
+      cell.font = {
+        bold: true,
+        size: 11,
+        color: { argb: 'FFFFFFFF' },
+      };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF12304A' },
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF12304A' } },
+        bottom: { style: 'thin', color: { argb: 'FF12304A' } },
+        left: { style: 'thin', color: { argb: 'FF12304A' } },
+        right: { style: 'thin', color: { argb: 'FF12304A' } },
+      };
+    });
+
+    headerRow.height = 30;
+    rowIndex++;
+
+    // ══════════════════════════════════════════════
+    // 3. البيانات
+    // ══════════════════════════════════════════════
+    rows.forEach((row, i) => {
+      const dataRow = sheet.getRow(rowIndex);
+      const bgColor = i % 2 === 0 ? 'FFFFFFFF' : 'FFF4F7FB';
+
+      columns.forEach((col, j) => {
+        const cell = dataRow.getCell(j + 1);
+        cell.value = row[col.key] != null ? String(row[col.key]) : '—';
+        cell.font = { size: 10, color: { argb: 'FF12304A' } };
+        cell.alignment = { horizontal: 'right', vertical: 'middle', wrapText: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: bgColor },
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE5EBF2' } },
+          bottom: { style: 'thin', color: { argb: 'FFE5EBF2' } },
+          left: { style: 'thin', color: { argb: 'FFE5EBF2' } },
+          right: { style: 'thin', color: { argb: 'FFE5EBF2' } },
+        };
+      });
+
+      dataRow.height = 22;
+      rowIndex++;
+    });
+
+    // ══════════════════════════════════════════════
+    // 4. عرض الأعمدة
+    // ══════════════════════════════════════════════
+    columns.forEach((col, i) => {
+      sheet.getColumn(i + 1).width = col.width || 20;
+    });
+
+    // ══════════════════════════════════════════════
+    // 5. تجميد الصف العلوي
+    // ══════════════════════════════════════════════
+    sheet.views = [
+      {
+        state: 'frozen',
+        ySplit: headerRowIndex,
+        rightToLeft: true,
+      },
+    ];
+
+    // ══════════════════════════════════════════════
+    // 6. حفظ
+    // ══════════════════════════════════════════════
+    await workbook.xlsx.write(stream);
+  }
 }
 module.exports = ExcelService ;
