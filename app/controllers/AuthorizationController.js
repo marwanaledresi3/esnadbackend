@@ -102,54 +102,7 @@ static async exportPdf(req, res) {
    *   status
    * }
    */
-  static async creat4e(req, res) {
-    try {
-      const {
-        authorization_type_id,
-        issuer_organization_id,
-        issued_by_user_id,
-        valid_from,
-        valid_until,
-        document_id,
-        notes,
-        targets,
-        status,
-      } = req.body;
-
-      if (!authorization_type_id || !issuer_organization_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'نوع التصريح والجهة المُصدِرة مطلوبان',
-        });
-      }
-
-      const authorization = await AuthorizationService.createFull({
-        authorization_type_id,
-        issuer_organization_id,
-        issued_by_user_id,
-        valid_from,
-        valid_until,
-        document_id,
-        notes,
-        targets: Array.isArray(targets) ? targets : [],
-        status: status || 'draft',
-        created_by: req.user?.id,
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: 'تم إنشاء التصريح بنجاح',
-        data: authorization,
-      });
-    } catch (error) {
-      console.error('AuthorizationController.create', error);
-      return res.status(500).json({
-        success: false,
-        message: 'تعذر إنشاء التصريح',
-      });
-    }
-  }
-
+  
 
 static async create(req, res) {
   try {

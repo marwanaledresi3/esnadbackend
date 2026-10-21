@@ -16,6 +16,13 @@ router.get(
   permissionMiddleware('AUTHORIZATION_VIEW'),
   AuthorizationController.getAll,
 );
+router.post(
+  '/',
+  organizationMiddleware,
+  permissionMiddleware('AUTHORIZATION_VIEW'),
+  AuthorizationController.create,
+);
+
 router.get(
   '/:id/pdf',
   organizationMiddleware,
