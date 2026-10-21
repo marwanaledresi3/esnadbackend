@@ -16,20 +16,14 @@ const roleRoutes = require('./routes/roleRoutes');
 const authorizationRoutes = require('./routes/authorizationRoutes');
 const caseRoutes = require('./routes/caseRoutes');
 const caseSubResourceRoutes = require('./routes/caseSubResourceRoutes');
-// const bodyRoutes = require('./routes/bodyRoutes');
 const bodyCaseRoutes = require('./routes/bodyCaseRoutes');
-// const incidentRoutes = require('./routes/incidentRoutes');
 const lookupRoutes = require('./routes/lookupRoutes')
 const ambulanceRoutes = require('./routes/ambulanceRoutes');
 const forensicRequestRoutes = require('./routes/forensicRequestRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const ambulanceMissionRoutes = require('./routes/ambulanceMissionRoutes');
-// const departmentRoutes = require('./routes/departmentRoutes');
 const userRoutes = require('./routes/userRoutes');
-// app.js
 const personRoutes = require('./routes/personRoutes');
-
-// استيراد المسارات
 const accountRequestRoutes = require('./routes/accountRequestRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const organizationMembershipRoutes = require('./routes/organizationMembershipRoutes');
@@ -38,21 +32,14 @@ const dataSharingRuleRoutes = require('./routes/dataSharingRuleRoutes');
 const sharedRecordRoutes = require('./routes/sharedRecordRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const sharingRoutes = require('./routes/sharingRoutes');
-// app.js
 const transportMissionRoutes = require('./routes/transportMissionRoutes');
 const vehicleDispatchRoutes = require('./routes/vehicleDispatchRoutes');
 const hospitalCustodyRoutes = require('./routes/hospitalCustodyRoutes');
 const bodyReleaseRoutes = require('./routes/bodyReleaseRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const transportRequestRoutes = require('./routes/transportRequestRoutes');
-
-// const authMiddleware = require('./middlewares/authMiddleware');
-// const requireSystemAdmin = require('./middlewares/requireSystemAdmin');
-
-// // استدعاء موجهات الأدمن
-// const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
-// const adminManagementRoutes = require('./routes/adminManagementRoutes'); // إن وجد
-// const adminAuditAndLinkRoutes = require('./routes/adminAuditAndLinkRoutes'); // إن وجد
+const authorizationRecipientRoutes = require('./routes/authorizationRecipientRoutes');
+const recipientRoutes = require('./routes/recipientRoutes');
 const app = express();
 
 // 1. إعدادات الأمان الأساسية
@@ -130,8 +117,9 @@ app.use('/api/v1/death-records', require('./routes/deathRecordRoutes'));
 app.use('/api/v1/case-disabilities', require('./routes/caseDisabilityRoutes'));
 app.use('/api/v1/document-shares', require('./routes/documentShareRoutes'));
 app.use('/api/v1/profile', require('./routes/profileRoutes'));
-
-
+app.use('/api/v1/organization-settings', require('./routes/organizationSettingsRoutes'));
+app.use('/api/v1/recipients', recipientRoutes);
+app.use('/api/v1/recipients-link', authorizationRecipientRoutes);
 app.use((req, res, next) => {
   next(ApiError.notFound(`المسار المطلـوب (${req.originalUrl}) غير موجود بالنظام`));
 });

@@ -1,7 +1,7 @@
 // models/AuthorizationModel.js
 // models/Authorization.js
 const {pool } = require('../config/db');
-
+const AuthorizationRecipient = require('./AuthorizationRecipient');
 class Authorization {
   /**
    * جلب التصاريح مع فلترة
@@ -89,39 +89,47 @@ class Authorization {
   /**
    * جلب تصريح واحد بمعرّفه مع أهدافه
    */
-  static async getById(id) {
-    const { rows } = await pool .query(
-      `
-      SELECT
-        a.*,
-        at.name AS authorization_type_name,
-        at.code AS authorization_type_code,
-        o.name AS issuer_organization_name,
-        u.full_name AS issued_by_user_name
-      FROM authorizations a
-      LEFT JOIN authorization_types at ON at.id = a.authorization_type_id
-      LEFT JOIN organizations o ON o.id = a.issuer_organization_id
-      LEFT JOIN users u ON u.id = a.issued_by_user_id
-      WHERE a.id = $1
-      `,
-      [id],
-    );
 
-    if (rows.length === 0) return null;
+static async getById(id) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      a.*,
+      at.name AS authorization_type_name,
+      at.code AS authorization_type_code,
+      o.name AS issuer_organization_name,
+      u.full_name AS issued_by_user_name
+    FROM authorizations a
+    LEFT JOIN authorization_types at ON at.id = a.authorization_type_id
+    LEFT JOIN organizations o ON o.id = a.issuer_organization_id
+    LEFT JOIN users u ON u.id = a.issued_by_user_id
+    WHERE a.id = $1
+    `,
+    [id],
+  );
 
-    const authorization = rows[0];
+  if (rows.length === 0) return null;
 
-    // جلب الأهداف
-    const { rows: targets } = await pool .query(
-      `SELECT id, target_type, target_id
-       FROM authorization_targets
-       WHERE authorization_id = $1`,
-      [id],
-    );
+  const auth = rows[0];
 
-    authorization.targets = targets;
-    return authorization;
-  }
+  // Targets
+  const { rows: targets } = await pool.query(
+    `SELECT id, target_type, target_id FROM authorization_targets WHERE authorization_id = $1`,
+    [id],
+  );
+  auth.targets = targets;
+
+  // ✅ المستلم من الجدول الجديد
+  const { rows: recipientRows } = await pool.query(
+    `SELECT r.* FROM authorization_recipient_links arl
+     INNER JOIN recipients r ON r.id = arl.recipient_id
+     WHERE arl.authorization_id = $1`,
+    [id],
+  );
+  auth.recipient = recipientRows[0] || null;
+
+  return auth;
+}
 
   /**
    * جلب تصريح برقمه

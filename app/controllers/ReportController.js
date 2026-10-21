@@ -1,4 +1,5 @@
 // controllers/ReportController.js
+const { pool } = require('../config/db');
 const ReportService = require('../services/ReportService');
 const PdfService = require('../services/PDFService');
 class ReportController {
@@ -212,7 +213,7 @@ class ReportController {
     }
 
     // اجلب البيانات مرة أخرى من report_type
-    const reportType = await db.query(
+    const reportType = await pool.query(
       `SELECT code FROM report_types WHERE id = $1`,
       [report.report_type_id],
     );

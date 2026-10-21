@@ -1,7 +1,30 @@
 // controllers/AuthorizationController.js
 const AuthorizationService = require('../services/AuthorizationService');
-
+ const PdfService = require('../services/PDFService');   
+ const Recipient = require('../models/Recipient');
+const AuthorizationRecipientLink = require('../models/AuthorizationRecipientLink');
 class AuthorizationController {
+ 
+
+static async exportPdf(req, res) {
+  try {
+    const auth = await AuthorizationService.getById(req.params.id);
+    if (!auth) {
+      return res.status(404).json({ success: false, message: 'التصريح غير موجود' });
+    }
+
+    const filename = `${auth.authorization_number}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+
+    PdfService.generateAuthorization(auth, res);
+  } catch (error) {
+    console.error('AuthorizationController.exportPdf', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: 'تعذر التصدير' });
+    }
+  }
+}
   /**
    * GET /authorizations
    */
@@ -79,7 +102,7 @@ class AuthorizationController {
    *   status
    * }
    */
-  static async create(req, res) {
+  static async creat4e(req, res) {
     try {
       const {
         authorization_type_id,
@@ -127,6 +150,109 @@ class AuthorizationController {
     }
   }
 
+
+static async create(req, res) {
+  try {
+    const {
+      authorization_type_id,
+      issuer_organization_id,
+      issued_by_user_id,
+      valid_from,
+      valid_until,
+      document_id,
+      notes,
+      targets,
+      status,
+      recipient_id,   // ← اختيار من موجود
+      recipient,      // ← إنشاء جديد
+    } = req.body;
+
+    if (!authorization_type_id || !issuer_organization_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'نوع التصريح والجهة المُصدِرة مطلوبان',
+      });
+    }
+
+    // 1. إنشاء التصريح (بدون مستلم)
+    const created = await AuthorizationService.createFull({
+      authorization_type_id,
+      issuer_organization_id,
+      issued_by_user_id,
+      valid_from,
+      valid_until,
+      document_id,
+      notes,
+      targets: Array.isArray(targets) ? targets : [],
+      status: status || 'draft',
+      created_by: req.user?.id,
+    });
+
+    // 2. إرفاق المستلم
+    let finalRecipientId = null;
+
+    if (recipient_id) {
+      // ✅ اختيار من موجود → اربط فقط (بدون نسخة)
+      finalRecipientId = recipient_id;
+
+      const recipientExists = await Recipient.getById(recipient_id);
+      if (!recipientExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'المستلم المختار غير موجود',
+        });
+      }
+
+      await AuthorizationRecipientLink.link(
+        created.id,
+        recipient_id,
+        req.user?.id,
+      );
+    } else if (recipient && recipient.full_name) {
+      // ✅ إنشاء جديد → أنشئ في `recipients` ثم اربط
+      const newRecipient = await Recipient.create({
+        organization_id: req.user?.organization_id,
+        full_name: recipient.full_name,
+        id_number: recipient.id_number,
+        id_type: recipient.id_type,
+        phone: recipient.phone,
+        relationship: recipient.relationship,
+        address: recipient.address,
+        id_verified: recipient.id_verified === true,
+        verified_by: recipient.id_verified === true ? req.user?.id : null,
+        verified_at: recipient.id_verified === true ? new Date() : null,
+        verification_method: recipient.verification_method,
+        id_document_url: recipient.id_document_url,
+        notes: recipient.notes,
+        metadata: recipient.metadata,
+        created_by: req.user?.id,
+      });
+
+      finalRecipientId = newRecipient.id;
+
+      await AuthorizationRecipientLink.link(
+        created.id,
+        newRecipient.id,
+        req.user?.id,
+      );
+    }
+
+    // 3. أعد جلب التصريح مع المستلم
+    const full = await AuthorizationService.getById(created.id);
+
+    return res.status(201).json({
+      success: true,
+      message: 'تم إنشاء التصريح بنجاح',
+      data: full || created,
+    });
+  } catch (error) {
+    console.error('AuthorizationController.create', error);
+    return res.status(500).json({
+      success: false,
+      message: 'تعذر إنشاء التصريح',
+    });
+  }
+}
   /**
    * PUT /authorizations/:id
    */

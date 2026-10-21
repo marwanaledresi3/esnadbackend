@@ -1,5 +1,5 @@
 // services/AuthorizationService.js
-const db = require('../config/db');
+const {pool} = require('../config/db');
 const Authorization = require('../models/Authorization');
 
 class AuthorizationService {
@@ -20,7 +20,7 @@ class AuthorizationService {
     status = 'draft',
     created_by,
   }) {
-    const client = await db.connect();
+    const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
@@ -80,7 +80,7 @@ class AuthorizationService {
    * جلب تصاريح جثمان معيّن
    */
   static async getByTarget(targetType, targetId) {
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       `
       SELECT
         a.*,

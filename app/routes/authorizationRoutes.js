@@ -1,12 +1,12 @@
 // routes/authorizationRoutes.js
 const express = require('express');
 const router = express.Router();
-
 const AuthorizationController = require('../controllers/AuthorizationController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const organizationMiddleware = require('../middlewares/organizationMiddleware');
 const permissionMiddleware = require('../middlewares/permissionMiddleware');
-
+const AuthorizationRecipientController = require('../controllers/AuthorizationRecipientController');
+const RecipientController = require('../controllers/RecipientController');
 // كل المسارات محمية بتسجيل الدخول
 router.use(authMiddleware);
 
@@ -17,21 +17,26 @@ router.get(
   permissionMiddleware('AUTHORIZATION_VIEW'),
   AuthorizationController.getAll,
 );
-
-// جلب تصريح واحد
 router.get(
-  '/:id',
+  '/:id/pdf',
   organizationMiddleware,
   permissionMiddleware('AUTHORIZATION_VIEW'),
-  AuthorizationController.getById,
+  AuthorizationController.exportPdf,
 );
 
-// إنشاء تصريح
+
 router.post(
-  '/',
+  '/:authorizationId/recipient',
   organizationMiddleware,
   permissionMiddleware('AUTHORIZATION_ISSUE'),
-  AuthorizationController.create,
+  RecipientController.linkToAuthorization,
+);
+
+router.delete(
+  '/:authorizationId/recipient',
+  organizationMiddleware,
+  permissionMiddleware('AUTHORIZATION_ISSUE'),
+  RecipientController.unlinkFromAuthorization,
 );
 
 // تحديث تصريح

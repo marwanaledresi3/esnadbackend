@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const {pool} = require('../config/db');
 const CaseDisability = require('../models/CaseDisability');
 const DisabilityType = require('../models/DisabilityType');
 const { logAudit } = require('../utils/auditLogger');
