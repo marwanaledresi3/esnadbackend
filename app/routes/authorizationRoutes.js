@@ -5,7 +5,6 @@ const AuthorizationController = require('../controllers/AuthorizationController'
 const authMiddleware = require('../middlewares/authMiddleware');
 const organizationMiddleware = require('../middlewares/organizationMiddleware');
 const permissionMiddleware = require('../middlewares/permissionMiddleware');
-const AuthorizationRecipientController = require('../controllers/AuthorizationRecipientController');
 const RecipientController = require('../controllers/RecipientController');
 // كل المسارات محمية بتسجيل الدخول
 router.use(authMiddleware);

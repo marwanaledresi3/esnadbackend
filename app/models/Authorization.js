@@ -1,7 +1,5 @@
-// models/AuthorizationModel.js
 // models/Authorization.js
 const {pool } = require('../config/db');
-const AuthorizationRecipient = require('./AuthorizationRecipient');
 class Authorization {
   /**
    * جلب التصاريح مع فلترة
