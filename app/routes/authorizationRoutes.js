@@ -30,6 +30,12 @@ router.get(
   AuthorizationController.exportPdf,
 );
 
+router.get(
+  '/:id',
+  organizationMiddleware,
+  permissionMiddleware('AUTHORIZATION_VIEW'),
+  AuthorizationController.getById,
+);
 
 router.post(
   '/:authorizationId/recipient',
